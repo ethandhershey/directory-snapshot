@@ -3,8 +3,6 @@ import argparse
 import json
 import fnmatch
 import time
-import hashlib
-from datetime import datetime
 from typing import Dict, List, Any
 
 def is_text_file(file_path: str, sample_size: int = 8192) -> bool:
@@ -38,11 +36,39 @@ def get_file_info(file_path: str, base_path: str, include_content: bool = True, 
 
     return file_info
 
-def generate_snapshot(input_dir: str, ignore_patterns: List[str], include_content: bool, max_size: int) -> Dict[str, Any]:
+def generate_simple_file_structure(input_dir: str, ignore_patterns: List[str]) -> str:
+    """Generate a simple tree-like structure of the directory, excluding the root."""
+    structure = []
+    script_name = os.path.basename(__file__)
+    output_name = "directory_snapshot.json"
+
+    def add_to_structure(path, prefix="", is_last=False, is_root=True):
+        name = os.path.basename(path)
+        if os.path.isdir(path):
+            if not is_root:  # Skip root directory
+                structure.append(f"{prefix}{'└── ' if is_last else '├── '}{name}/")
+            new_prefix = "" if is_root else prefix + ("    " if is_last else "│   ")
+            
+            items = sorted([item for item in os.listdir(path) 
+                            if not any(fnmatch.fnmatch(item, pattern) for pattern in ignore_patterns)
+                            and item != script_name and item != output_name])
+            
+            for i, item in enumerate(items):
+                add_to_structure(os.path.join(path, item), new_prefix, i == len(items) - 1, False)
+        elif not is_root:
+            structure.append(f"{prefix}{'└── ' if is_last else '├── '}{name}")
+
+    add_to_structure(input_dir)
+    return '\n'.join(structure)
+
+def generate_snapshot(input_dir: str, ignore_patterns: List[str], include_content: bool, max_size: int, include_structure: bool) -> Dict[str, Any]:
     """Generate a snapshot of the directory."""
-    snapshot = {
-        "files": []
-    }
+    snapshot = {}
+    
+    if include_structure:
+        snapshot["file_structure"] = generate_simple_file_structure(input_dir, ignore_patterns)
+    
+    snapshot["files"] = []
 
     script_name = os.path.basename(__file__)
     output_name = "directory_snapshot.json"  # Default output name
@@ -82,12 +108,18 @@ def main():
                         help="Patterns of files/folders to ignore (supports wildcards)")
     parser.add_argument("--max-size", type=int, default=1024*1024, help="Maximum file size to include content, in bytes (default: 1MB)")
     parser.add_argument("--no-content", action="store_true", help="Exclude file contents from the snapshot")
+    parser.add_argument("--structure-only", action="store_true", help="Display only the file structure and exit")
+    parser.add_argument("--no-structure", action="store_true", help="Exclude file structure from the snapshot")
     
     args = parser.parse_args()
 
+    if args.structure_only:
+        print(generate_simple_file_structure(args.input, args.ignore))
+        return
+
     # Generate the snapshot
     start_time = time.time()
-    snapshot = generate_snapshot(args.input, args.ignore, not args.no_content, args.max_size)
+    snapshot = generate_snapshot(args.input, args.ignore, not args.no_content, args.max_size, not args.no_structure)
     
     # Write the snapshot to a JSON file
     with open(args.output, 'w', encoding='utf-8', newline='\n') as f:
@@ -100,6 +132,11 @@ def main():
     if 'errors' in snapshot:
         print(f"Errors encountered: {len(snapshot['errors'])}")
     print(f"Output written to: {args.output}")
+
+    # Display the file structure if included
+    if not args.no_structure:
+        print("\nFile Structure:")
+        print(snapshot["file_structure"])
 
 if __name__ == "__main__":
     main()
