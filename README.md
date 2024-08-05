@@ -1,40 +1,35 @@
 # Directory Snapshot Tool
 
 ## Overview
-
 The Directory Snapshot Tool is a Python script that generates a comprehensive snapshot of a directory's structure and file contents. It's particularly useful for capturing project structures and content for analysis by Large Language Models (LLMs) or for quick project overviews.
 
 ## Features
-
 - Captures directory structure and file contents in a single JSON file
 - Configurable file size limit for content inclusion
 - Ability to exclude file contents for large directories
+- Option to include or exclude the file structure in the output
 - Customizable ignore patterns for excluding files and directories
 - Automatic exclusion of binary files and handling of text encodings
 - Efficient processing of large directories
 
 ## Installation
-
 1. Ensure you have Python 3.6 or higher installed.
 2. Clone this repository or download the `snapshot.py` script.
 
 No additional dependencies are required.
 
 ## Usage
-
 Basic usage:
-
 ```bash
 python snapshot.py
 ```
-
 This will create a snapshot of the current directory and save it as `directory_snapshot.json`.
 
 ### Command-line Options
-
 ```
 usage: snapshot.py [-h] [-i INPUT] [-o OUTPUT] [--ignore IGNORE [IGNORE ...]]
-                   [--max-size MAX_SIZE] [--no-content]
+                   [--max-size MAX_SIZE] [--no-content] [--structure-only]
+                   [--no-structure]
 
 Generate a directory snapshot for LLM analysis.
 
@@ -46,12 +41,13 @@ options:
                         Output JSON file name (default: directory_snapshot.json)
   --ignore IGNORE [IGNORE ...]
                         Patterns of files/folders to ignore (supports wildcards)
-  -max-size MAX_SIZE    Maximum file size to include content, in bytes (default: 1MB)
+  --max-size MAX_SIZE   Maximum file size to include content, in bytes (default: 1MB)
   --no-content          Exclude file contents from the snapshot
+  --structure-only      Display only the file structure and exit
+  --no-structure        Exclude file structure from the snapshot
 ```
 
 ### Examples
-
 1. Snapshot a specific directory:
    ```bash
    python snapshot.py -i /path/to/your/project
@@ -77,12 +73,21 @@ options:
    python snapshot.py --no-content
    ```
 
+6. Display only the file structure without generating a snapshot:
+   ```bash
+   python snapshot.py --structure-only
+   ```
+
+7. Generate a snapshot without the file structure:
+   ```bash
+   python snapshot.py --no-structure
+   ```
+
 ## Output Format
-
 The tool generates a JSON file with the following structure:
-
 ```json
 {
+  "file_structure": "├── file1.txt\n├── directory1/\n│   └── file2.txt\n└── file3.txt",
   "files": [
     {
       "path": "relative/path/to/file",
@@ -99,12 +104,13 @@ The tool generates a JSON file with the following structure:
   ]
 }
 ```
-
-Note: The "errors" key will only be present if errors were encountered during the snapshot process.
+Note: 
+- The "file_structure" key will only be present if `--no-structure` is not used.
+- The "errors" key will only be present if errors were encountered during the snapshot process.
 
 ## Use Cases
-
 - Quickly capture project structure and contents for documentation
 - Prepare project snapshots for analysis by AI models or code review tools
 - Create lightweight backups of text-based projects
 - Generate overviews of directory contents for archival purposes
+- Analyze project structure separately from file contents
